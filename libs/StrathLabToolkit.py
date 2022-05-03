@@ -11,7 +11,8 @@ import os
 #import pandas as pd
 from time import sleep
 from time import time
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+from IPython.display import Markdown #for text coloring
 #import random
 #import pickle
 
@@ -144,3 +145,123 @@ def Initialise_AWG(address="130.159.91.79"):
         print("could not connect to awg")
     return awg
 
+def Send_WFs_to_AWG(wf1,
+                    out1,
+                    ch1_V, 
+                    wf2, 
+                    out2, 
+                    ch2_V, 
+                    isHot, 
+                    awg, sr, 
+                    channels, 
+                    rounding_fact=1):
+    
+    wf1_y = wf1
+    wf2_y = wf2
+    ch1_voltage = ch1_V
+    ch2_voltage = ch2_V
+    samplerate = sr
+    using_AWG_channels = channels
+    wf_rounding_factor = rounding_fact
+    
+    wf1len = wf1_y.shape[0]
+    wf2len = wf2_y.shape[0]
+    if using_AWG_channels == (1,2):
+        if (wf1len-wf1len%wf_rounding_factor) > (wf2len-wf2len%wf_rounding_factor):
+            wf1_y = wf1_y[0:(wf2len-wf2len%wf_rounding_factor)]
+            wf2_y = wf2_y[0:(wf2len-wf2len%wf_rounding_factor)]
+            print('- Waveform lengths matched: WF1 shortened to match WF2.')
+        else:
+            wf1_y = wf1_y[0:(wf1len-wf1len%wf_rounding_factor)]
+            wf2_y = wf2_y[0:(wf1len-wf1len%wf_rounding_factor)]
+            print('- Waveform lengths matched: WF2 shortened to match WF1.')
+        print(f'Waveform WF1 length after rounding (samples): {wf1_y.shape[0]}')
+        print(f'Waveform WF2 length after rounding (samples): {wf2_y.shape[0]}')
+        
+        wf1_x = np.arange(0,wf1_y.shape[0]*1/samplerate,1/samplerate)
+        wf1_x = wf1_x[0:wf1_y.shape[0]] 
+        
+        wf2_x = np.arange(0,wf2_y.shape[0]*1/samplerate,1/samplerate)
+        wf2_x = wf2_x[0:wf2_y.shape[0]]
+    elif using_AWG_channels[0] == 1:
+        wf1_y = wf1_y[0:(wf1len-wf1len%wf_rounding_factor)]
+        print(f'Waveform WF1 length after rounding (samples): {wf1_y.shape[0]}')
+        
+        wf1_x = np.arange(0,wf1_y.shape[0]*1/samplerate,1/samplerate)
+        wf1_x = wf1_x[0:wf1_y.shape[0]]     
+        
+    elif using_AWG_channels[0] == 2:
+        wf2_y = wf2_y[0:(wf2len-wf2len%wf_rounding_factor)]
+        print(f'Waveform WF2 length after rounding (samples): {wf2_y.shape[0]}')
+        wf2_x = np.arange(0,wf2_y.shape[0]*1/samplerate,1/samplerate)
+        wf2_x = wf2_x[0:wf2_y.shape[0]]    
+        
+    try:
+        awg.clear_all_wfm()
+    except:
+        pass
+    
+    if isHot:
+        awg.configure(fs=samplerate, out1=out1, out2=out2, amp1=ch1_voltage, amp2=ch2_voltage, func1='arb')
+        print(f'Sample rate is {awg.fs/1000000} MSa/sec.')
+    
+        if 1 in using_AWG_channels:
+            segment1 = awg.download_wfm(wfmData=wf1_y, ch=1, name='wfm', wfmFormat='real', sampleMkr=1, sampleMkrLength=40)
+            awg.play(wfmID=segment1, ch=1)
+        if 2 in using_AWG_channels:
+            segment2 = awg.download_wfm(wfmData=wf2_y, ch=2, name='wfm', wfmFormat='real', sampleMkr=1, sampleMkrLength=40)
+            awg.play(wfmID=segment2, ch=2)
+        
+        if using_AWG_channels == (1,2):
+            fig,ax=plt.subplots(2,1,figsize=(12,5),sharex=True)
+    
+            ax[0].plot(wf1_x,wf1_y,color='xkcd:indigo',alpha=0.6)
+            ax[0].set_facecolor((1.0, 0.47, 0.42,0.2))
+            ax[0].set_title('AWG Channel 1 output')    
+    
+            ax[1].plot(wf2_x,wf2_y,color='xkcd:indigo',alpha=0.6) 
+            ax[1].set_title('AWG Channel 2 output')
+            ax[1].set_facecolor((1.0, 0.47, 0.42,0.2))
+            
+            return wf1_x, wf2_x, fig
+        
+        elif len(using_AWG_channels) == 1:
+            fig,ax=plt.subplots(1,1,figsize=(12,3),sharex=True)
+            wf_y = eval(f'wf{using_AWG_channels[0]}_y')
+            wf_x = eval(f'wf{using_AWG_channels[0]}_x')
+            
+            ax.plot(wf_x,wf_y,color='xkcd:indigo',alpha=0.6) 
+            ax.set_title(f'AWG Channel {using_AWG_channels[0]} output')
+            ax.set_facecolor((1.0, 0.47, 0.42,0.2))    
+            ax.set_xlabel('Time')
+            
+            if using_AWG_channels[0] == 1:
+                return wf1_x, None, fig
+            else:
+                return None, wf2_x, fig
+    else:
+        display (Markdown('<span style="color: #e17701;font-weight:bold">Waveform displayed, but not sent to instrument. Reason: [isHot = False].</span>'))
+        if using_AWG_channels == (1,2):
+            fig,ax=plt.subplots(2,1,figsize=(12,5),sharex=True)
+    
+            ax[0].plot(wf1_x,wf1_y,color='xkcd:indigo',alpha=0.6)
+            ax[0].set_title('AWG Channel 1 output')    
+    
+            ax[1].plot(wf2_x,wf2_y,color='xkcd:indigo',alpha=0.6) 
+            ax[1].set_title('AWG Channel 2 output')
+            
+            return wf1_x, wf2_x, fig
+        
+        elif len(using_AWG_channels) == 1:
+            fig,ax=plt.subplots(1,1,figsize=(12,3),sharex=True)
+            
+            wf_y = eval(f'wf{using_AWG_channels[0]}_y')
+            wf_x = eval(f'wf{using_AWG_channels[0]}_x')
+            ax.plot(wf_x,wf_y,color='xkcd:indigo',alpha=0.6) 
+            ax.set_title(f'AWG Channel {using_AWG_channels[0]} output')
+            ax.set_xlabel('Time')
+
+            if using_AWG_channels[0] == 1:
+                return wf1_x, None, fig
+            else:
+                return None, wf2_x, fig    
