@@ -19,7 +19,7 @@ from IPython.display import Markdown #for text coloring
 try:
     import pyarbtools
 except:
-    warnings.warn("Dependency pyarbtools not loaded for LabControlToolkit.",RuntimeWarning)
+    warnings.warn("Dependency pyarbtools not loaded for StrathLabToolkit.",RuntimeWarning)
     print()
 
 '''
