@@ -32,12 +32,12 @@ except:
 ##############################################################################
 
 ##### UTILITY
-def find_nearest(array, value):
+def Find_Nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
 
-def filesize_fmt(num, suffix="B"):
+def Filesize_Fmt(num, suffix="B"):
     # credit: https://stackoverflow.com/questions/1094841/get-human-readable-version-of-file-size
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
@@ -45,7 +45,8 @@ def filesize_fmt(num, suffix="B"):
         num /= 1024.0
     return f"{num:.1f}Yi{suffix}"
 
-def GetFilesFromDir(directory=None):
+def Get_Files_From_Dir(directory=None):
+    # Returns all filenames in a directory
     if directory == None:
         _, _, filenames = next(os.walk(os.getcwd())) 
         return filenames
@@ -76,7 +77,7 @@ def Initiate_Keithley(address="USB0::0x05E6::0x2450::04497230::INSTR"):
     print(sm.id)
     return sm
 
-def Keithley_getReadout(sm):
+def Keithley_GetReadout(sm):
     ret = sm.ask(':READ? "defbuffer1", READ, SOUR')
     ret = ret.split(',')
     I = eval(ret[0])
@@ -118,19 +119,26 @@ def Set_OSC_Timebase(rth, left, right):
     rth.write_str(f"TIM:RANG {dt}")
     rth.write_str(f"TIMebase:HORizontal:POSition {t0}")
 
-def Acq_OSC_Trace(rth, chan,verbose=False):
+def Acq_OSC_Trace(rth, chan,verbose=False,parametric_x=False):
+    # Acquires a single trace from a given channel of the scope.
+    # Returned format is either linspace-compatible tuple of three values (parametric_x = True),
+    #  or the full vector of t-values (parametric_x = False)
     if chan in (1,2,3,4):
         tvalues = rth.query_str(f'CHAN{chan}:WAV1:DATA:HEAD?')
         tvalues = [float(s) for s in tvalues.split(',')]
-        t=np.arange(tvalues[0],tvalues[1],(tvalues[1]-tvalues[0])/tvalues[2])
-        
+
         scpi_string = f'FORM REAL,32;:CHAN{chan}:DATA?'
         if verbose:
             print(f'Processing SCPI comm: {scpi_string}')
         data_bin_ch = rth.query_bin_or_ascii_float_list(scpi_string)   
         if verbose:
             print(f'OSC: Channel {chan} readout successful.')
-        return t, data_bin_ch
+        
+        if parametric_x:
+            return (tvalues[0],tvalues[1],tvalues[2]), data_bin_ch
+        else:
+            t=np.arange(tvalues[0],tvalues[1],(tvalues[1]-tvalues[0])/tvalues[2])
+            return t, data_bin_ch
     else:
         raise Warning('Wrong channel selected for readout. Allowed values: 1,2,3,4')
         
