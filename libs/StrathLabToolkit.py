@@ -54,6 +54,27 @@ def Get_Files_From_Dir(directory=None):
         _, _, filenames = next(os.walk(os.path.join(os.getcwd(),directory)))
         return filenames        
 
+def Visualise_Dict(d,lvl=0):
+    # by binnev, from: https://stackoverflow.com/questions/15023333/simple-tool-library-to-visualize-huge-python-dict
+    # go through the dictionary alphabetically 
+    for k in sorted(d):
+
+        # print the table header if we're at the beginning
+        if lvl == 0 and k == sorted(d)[0]:
+            print('{:<25} {:<15} {:<10}'.format('KEY','LEVEL','TYPE'))
+            print('-'*79)
+
+        indent = '  '*lvl # indent the table to visualise hierarchy
+        t = str(type(d[k]))
+
+        # print details of each entry
+        print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
+
+        # if the entry is a dictionary
+        if type(d[k])==dict:
+            # visualise THAT dictionary with +1 indent
+            Visualise_Dict(d[k],lvl+1)
+
 #%% MOCK INSTRUMENT (for )
 def Initiate_Mock(address='0'):
     mock = Mock()
@@ -135,7 +156,7 @@ def Acq_OSC_Trace(rth, chan,verbose=False,parametric_x=False):
             print(f'OSC: Channel {chan} readout successful.')
         
         if parametric_x:
-            return (tvalues[0],tvalues[1],tvalues[2]), data_bin_ch
+            return (tvalues[0],tvalues[1],int(tvalues[2])), data_bin_ch
         else:
             t=np.arange(tvalues[0],tvalues[1],(tvalues[1]-tvalues[0])/tvalues[2])
             return t, data_bin_ch
