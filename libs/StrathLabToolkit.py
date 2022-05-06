@@ -54,9 +54,33 @@ def Get_Files_From_Dir(directory=None):
         _, _, filenames = next(os.walk(os.path.join(os.getcwd(),directory)))
         return filenames        
 
+def MovingAverage(x, N):
+    cumsum = np.cumsum(np.insert(x, 0, 0)) 
+    return (cumsum[N:] - cumsum[:-N]) / float(N)
+
+def Clamp(n, minval, maxval):
+    try:
+        for i, value in enumerate(n):
+            n[i]=max(minval, min(maxval, value))
+    except:
+        n = max(min(n, maxval), minval)
+    return n
+
+def Factor_Int_2(n):
+    #source: https://stackoverflow.com/questions/39248245/factor-an-integer-to-something-as-close-to-a-square-as-possible
+    val = ceil(sqrt(n))
+    while True:
+        if not n%val:
+            val2 = n//val
+            break
+        val -= 1
+    return val, val2
+
+#### SPECIFIC USE UTILITY
+
 def Visualise_Dict(d,lvl=0):
     # by binnev, from: https://stackoverflow.com/questions/15023333/simple-tool-library-to-visualize-huge-python-dict
-    # go through the dictionary alphabetically 
+    # go through the dictionary alphabetically. Modified for out usecase 
     for k in sorted(d):
 
         # print the table header if we're at the beginning
@@ -71,18 +95,32 @@ def Visualise_Dict(d,lvl=0):
 
         printable_types = ('int','float','str','tuple')
         if tname in printable_types:
-            if k =='xpar':
+            if 'xpar' in k:
                 outp = t+f": {d[k][2]/(d[k][1]-d[k][0]):.2e} Sa/s, {d[k][2]} Sa"
-                print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
+                print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))    
             else:
                 print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t+": "+str(d[k])))
+
+
         else:
-            # print details of each entry
-            print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
+            if k =='readout_osc' or k =='measurement':
+                try:
+                    try:
+                        xpar = d['readout_osc']['mean']['xpar']
+                    except:   
+                        xpar = d['measurement']['mean']['xpar']
+                    rep = d['repeats']
+                    outp = t+f": {rep}x | {xpar[2]/(xpar[1]-xpar[0]):.2e} Sa/s, {xpar[2]} Sa"
+                    print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
+                except:
+                    print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t+": "+str(d[k])))
+            else:
+                # print details of each entry
+                print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
             
 
         # if the entry is a dictionary
-        if type(d[k])==dict:
+        if type(d[k])==dict and k != 'readout_osc' and k != 'measurement':
             # visualise THAT dictionary with +1 indent
             Visualise_Dict(d[k],lvl+1)
 
@@ -181,9 +219,13 @@ def Initialise_AWG(address="130.159.91.79"):
     awg=None
     try:
         awg = pyarbtools.instruments.M8190A(address, port=5025, timeout=10, reset=False)
+        print(awg.instId)
     except:
-        print("could not connect to awg")
+        Warning("Connecting to AWG failed.")
     return awg
+
+def Calculate_WF_xpar(wf,sr):
+    return (0,(wf.shape[0]-1)/sr,wf.shape[0])
 
 def Send_WFs_to_AWG(wf1,
                     out1,
@@ -204,9 +246,9 @@ def Send_WFs_to_AWG(wf1,
     using_AWG_channels = channels
     wf_rounding_factor = rounding_fact
     
-    wf1len = wf1_y.shape[0]
-    wf2len = wf2_y.shape[0]
     if using_AWG_channels == (1,2):
+        wf1len = wf1_y.shape[0]
+        wf2len = wf2_y.shape[0]
         if (wf1len-wf1len%wf_rounding_factor) > (wf2len-wf2len%wf_rounding_factor):
             wf1_y = wf1_y[0:(wf2len-wf2len%wf_rounding_factor)]
             wf2_y = wf2_y[0:(wf2len-wf2len%wf_rounding_factor)]
@@ -218,23 +260,22 @@ def Send_WFs_to_AWG(wf1,
         print(f'Waveform WF1 length after rounding (samples): {wf1_y.shape[0]}')
         print(f'Waveform WF2 length after rounding (samples): {wf2_y.shape[0]}')
         
-        wf1_x = np.arange(0,wf1_y.shape[0]*1/samplerate,1/samplerate)
-        wf1_x = wf1_x[0:wf1_y.shape[0]] 
-        
-        wf2_x = np.arange(0,wf2_y.shape[0]*1/samplerate,1/samplerate)
-        wf2_x = wf2_x[0:wf2_y.shape[0]]
+        wf1_xpar = Calculate_WF_xpar(wf1_y,samplerate)
+        wf2_xpar = Calculate_WF_xpar(wf2_y,samplerate)
+
     elif using_AWG_channels[0] == 1:
+        wf1len = wf1_y.shape[0]
         wf1_y = wf1_y[0:(wf1len-wf1len%wf_rounding_factor)]
         print(f'Waveform WF1 length after rounding (samples): {wf1_y.shape[0]}')
         
-        wf1_x = np.arange(0,wf1_y.shape[0]*1/samplerate,1/samplerate)
-        wf1_x = wf1_x[0:wf1_y.shape[0]]     
+        wf1_xpar = Calculate_WF_xpar(wf1_y,samplerate)
         
     elif using_AWG_channels[0] == 2:
+        wf2len = wf2_y.shape[0]
         wf2_y = wf2_y[0:(wf2len-wf2len%wf_rounding_factor)]
         print(f'Waveform WF2 length after rounding (samples): {wf2_y.shape[0]}')
-        wf2_x = np.arange(0,wf2_y.shape[0]*1/samplerate,1/samplerate)
-        wf2_x = wf2_x[0:wf2_y.shape[0]]    
+
+        wf2_xpar = Calculate_WF_xpar(wf2_y,samplerate)   
         
     try:
         awg.clear_all_wfm()
@@ -255,42 +296,42 @@ def Send_WFs_to_AWG(wf1,
         if using_AWG_channels == (1,2):
             fig,ax=plt.subplots(2,1,figsize=(12,5),sharex=True)
     
-            ax[0].plot(wf1_x,wf1_y,color='xkcd:indigo',alpha=0.6)
+            ax[0].plot(np.linspace(*wf1_xpar),wf1_y,color='xkcd:indigo',alpha=0.6)
             ax[0].set_facecolor((1.0, 0.47, 0.42,0.2))
             ax[0].set_title('AWG Channel 1 output')    
     
-            ax[1].plot(wf2_x,wf2_y,color='xkcd:indigo',alpha=0.6) 
+            ax[1].plot(np.linspace(*wf2_xpar),wf2_y,color='xkcd:indigo',alpha=0.6) 
             ax[1].set_title('AWG Channel 2 output')
             ax[1].set_facecolor((1.0, 0.47, 0.42,0.2))
             
-            return wf1_x, wf2_x, fig
+            return wf1_xpar, wf2_xpar, fig
         
         elif len(using_AWG_channels) == 1:
             fig,ax=plt.subplots(1,1,figsize=(12,3),sharex=True)
             wf_y = eval(f'wf{using_AWG_channels[0]}_y')
-            wf_x = eval(f'wf{using_AWG_channels[0]}_x')
+            wf_xpar = eval(f'wf{using_AWG_channels[0]}_xpar')
             
-            ax.plot(wf_x,wf_y,color='xkcd:indigo',alpha=0.6) 
+            ax.plot(np.linspace(*wf_xpar),wf_y,color='xkcd:indigo',alpha=0.6) 
             ax.set_title(f'AWG Channel {using_AWG_channels[0]} output')
             ax.set_facecolor((1.0, 0.47, 0.42,0.2))    
             ax.set_xlabel('Time')
             
             if using_AWG_channels[0] == 1:
-                return wf1_x, None, fig
+                return wf1_xpar, None, fig
             else:
-                return None, wf2_x, fig
+                return None, wf2_xpar, fig
     else:
         display (Markdown('<span style="color: #e17701;font-weight:bold">Waveform displayed, but not sent to instrument. Reason: [isHot = False].</span>'))
         if using_AWG_channels == (1,2):
             fig,ax=plt.subplots(2,1,figsize=(12,5),sharex=True)
     
-            ax[0].plot(wf1_x,wf1_y,color='xkcd:indigo',alpha=0.6)
+            ax[0].plot(np.linspace(*wf1_xpar),wf1_y,color='xkcd:indigo',alpha=0.6)
             ax[0].set_title('AWG Channel 1 output')    
     
-            ax[1].plot(wf2_x,wf2_y,color='xkcd:indigo',alpha=0.6) 
+            ax[1].plot(np.linspace(*wf2_xpar),wf2_y,color='xkcd:indigo',alpha=0.6) 
             ax[1].set_title('AWG Channel 2 output')
             
-            return wf1_x, wf2_x, fig
+            return wf1_xpar, wf2_xpar, fig
         
         elif len(using_AWG_channels) == 1:
             fig,ax=plt.subplots(1,1,figsize=(12,3),sharex=True)
@@ -302,6 +343,6 @@ def Send_WFs_to_AWG(wf1,
             ax.set_xlabel('Time')
 
             if using_AWG_channels[0] == 1:
-                return wf1_x, None, fig
+                return wf1_xpar, None, fig
             else:
-                return None, wf2_x, fig    
+                return None, wf2_xpar, fig    
