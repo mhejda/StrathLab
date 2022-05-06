@@ -15,7 +15,7 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
 - `date` (full date of acquistion, including HH:MM:SS)
 - `repeats` (how many readouts are taken in the measurement)
 - `modulation` (stores everything related to AWG modulation)
-    - all variables in the scope that include 'ch1_' and/or 'ch_2' are saved alongside the measurement
+    - all variables in the scope that include `ch1_` and/or `ch_2` are saved alongside the measurement
     - `wf1/2_xpar`
     - `wf1/2_y`
 - `readout_osc` (oscilloscope readout traces, numbered as simple integers)
