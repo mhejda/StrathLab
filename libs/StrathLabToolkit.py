@@ -65,10 +65,21 @@ def Visualise_Dict(d,lvl=0):
             print('-'*79)
 
         indent = '  '*lvl # indent the table to visualise hierarchy
-        t = str(type(d[k]))
+        
+        tname = type(d[k]).__name__
+        t = f'<{tname}>'
 
-        # print details of each entry
-        print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
+        printable_types = ('int','float','str','tuple')
+        if tname in printable_types:
+            if k =='xpar':
+                outp = t+f": {d[k][2]/(d[k][1]-d[k][0]):.2e} Sa/s, {d[k][2]} Sa"
+                print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
+            else:
+                print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t+": "+str(d[k])))
+        else:
+            # print details of each entry
+            print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
+            
 
         # if the entry is a dictionary
         if type(d[k])==dict:
