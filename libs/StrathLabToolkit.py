@@ -19,8 +19,7 @@ from IPython.display import Markdown #for text coloring
 try:
     import pyarbtools
 except:
-    warnings.warn("Dependency pyarbtools not loaded for StrathLabToolkit.",RuntimeWarning)
-    print()
+    pass
 
 '''
 try:
@@ -78,9 +77,9 @@ def Factor_Int_2(n):
 
 #### SPECIFIC USE UTILITY
 
-def Visualise_Dict(d,lvl=0):
+def Visualise_Data_Dict(d,lvl=0):
     # by binnev, from: https://stackoverflow.com/questions/15023333/simple-tool-library-to-visualize-huge-python-dict
-    # go through the dictionary alphabetically. Modified for out usecase 
+    # go through the dictionary alphabetically. Modified for StrathLab measurement-data dictionaries
     for k in sorted(d):
 
         # print the table header if we're at the beginning
@@ -122,7 +121,7 @@ def Visualise_Dict(d,lvl=0):
         # if the entry is a dictionary
         if type(d[k])==dict and k != 'readout_osc' and k != 'measurement':
             # visualise THAT dictionary with +1 indent
-            Visualise_Dict(d[k],lvl+1)
+            Visualise_Data_Dict(d[k],lvl+1)
 
 #%% MOCK INSTRUMENT (for )
 def Initiate_Mock(address='0'):
