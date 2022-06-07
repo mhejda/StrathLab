@@ -3,7 +3,8 @@ Strathclyde Neuromorphic Photonics Lab Control: scripts and notebooks.
 
 # Jupyter Notebook template for data acquisition
 
-Directly control most of lab instruments, create waveforms, send to AWG, readout multiple oscilloscope readouts and save all the data and metadata into structured, compressed datafiles.
+Directly control most of lab instruments, create waveforms, send to AWG, readout multiple oscilloscope readouts and save all the data and metadata into structured, compressed datafiles. 
+It allows for using any number of AWG channels (including none) and for multi-channel acquisition. Custom multi-channel data readout wrapper was implemented for this, which directly reads all requested channels simultaneously, instead of just looping through them.
 
 ## Measurement datafile structure
 
@@ -18,7 +19,7 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
     - _all variables in the scope that include `ch1_` and/or `ch2_` are saved alongside the measurement_
     - `wf1/2_xpar`
     - `wf1/2_y`
-- `readout_osc` _(oscilloscope readout traces, numbered as simple integers)_
+- `readout_osc_{n}` _(oscilloscope readout traces, numbered as simple integers, where n is integer enumerating acquired channels)_
     - `0`, `1`, `2`, `3`, ...
         - `xpar `
         - `y`
@@ -28,4 +29,4 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
 
 NOTE: `xpar` is a three-value tuple which can be directly fed to `np.linspace(*xpar)` to create a correspodning time-values vector for any recorded data.
 
-Contents of any data-dictionary can be directly viewer with `lab.Visualise_Data_Dict(dict)`.
+Contents of any data-dictionary can be directly visualized and viewed with `lab.Visualise_Data_Dict(dict)`.
