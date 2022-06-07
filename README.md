@@ -3,10 +3,17 @@ Strathclyde Neuromorphic Photonics Lab Control: scripts and notebooks.
 
 # Jupyter Notebook template for data acquisition
 
-Directly control most of our lab instruments, create waveforms, send to AWG, readout Keithley state and multiple oscilloscope readouts and save all the data and metadata into structured, compressed datafiles. 
-It allows for using any number of AWG channels (including none) and for multi-channel R&S oscilloscope acquisition. Custom multi-channel OSC data readout wrapper was implemented for this, which directly reads all requested oscilloscope channels simultaneously (instead of just looping through them).
+**Main idea:** Directly control most of our lab instruments, perform measurements in a streamlined way. 
 
-Among other features, every measurement from the OSC in the template is implemented with repeated readouts (set by user). This enables fast and easy acquisition of large amounts of repeated readouts across multiple oscilloscope channels with all the channels being in sync. Average readout traces are also directly provided for each channel over all acquired repetitions.
+The template allows to:
+- create arbitrary waveforms via custom code, 
+- send waveforms to AWG, controll all key parameters, save those as metadata with each measurement, 
+- readout Keithley state, 
+- readout all oscilloscope channels simultaneously at each shot (via custom R&S readout wrapper)
+- perform arbitrary number of repetitions over any number of OSC channels,
+- save and store all the data and metadata in structured, compressed datafiles. 
+
+Among other features, the repeated acquisition enables fast and easy recording of large amounts of repeated readouts across multiple oscilloscope channels with all the channels being in sync. Average readout traces are also directly provided for each channel over all acquired repetitions.
 
 ## Measurement datafile structure
 
