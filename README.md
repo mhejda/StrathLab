@@ -3,7 +3,17 @@ Strathclyde Neuromorphic Photonics Lab Control: scripts and notebooks.
 
 # Jupyter Notebook template for data acquisition
 
-Directly control most of lab instruments, create waveforms, send to AWG, readout multiple oscilloscope readouts and save all the data and metadata into structured, compressed datafiles.
+**Main idea:** Directly control most of our lab instruments, perform measurements in a streamlined way. 
+
+The template allows to:
+- create arbitrary waveforms via custom code, 
+- send waveforms to AWG, controll all key parameters, save those as metadata with each measurement, 
+- readout Keithley state, 
+- readout all oscilloscope channels simultaneously at each shot (via custom R&S readout wrapper)
+- perform arbitrary number of repetitions over any number of OSC channels,
+- save and store all the data and metadata in structured, compressed datafiles. 
+
+Among other features, the repeated acquisition enables fast and easy recording of large amounts of repeated readouts across multiple oscilloscope channels with all the channels being in sync. Average readout traces are also directly provided for each channel over all acquired repetitions.
 
 ## Measurement datafile structure
 
@@ -18,7 +28,7 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
     - _all variables in the scope that include `ch1_` and/or `ch2_` are saved alongside the measurement_
     - `wf1/2_xpar`
     - `wf1/2_y`
-- `readout_osc` _(oscilloscope readout traces, numbered as simple integers)_
+- `readout_osc_{n}` _(oscilloscope readout traces, numbered as simple integers, where {n} is an integer enumerating the acquired channel. For single channel readout, just set to 1)_
     - `0`, `1`, `2`, `3`, ...
         - `xpar `
         - `y`
@@ -28,4 +38,4 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
 
 NOTE: `xpar` is a three-value tuple which can be directly fed to `np.linspace(*xpar)` to create a correspodning time-values vector for any recorded data.
 
-Contents of any data-dictionary can be directly viewer with `lab.Visualise_Data_Dict(dict)`.
+Contents of any data-dictionary can be directly visualized and viewed with `lab.Visualise_Data_Dict(dict)`.
