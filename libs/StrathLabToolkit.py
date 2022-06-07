@@ -167,8 +167,8 @@ def Initialise_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
         rth.visa_timeout = 20000 # Timeout for VISA Read Operations
         rth.opc_timeout = 3000 # Timeout for opc-synchronised operations
         rth.instrument_status_checking = True # Error check after each command
-        rth.write_bool(f'EXP:WAV:MULT ',False)
-        rth.write_bool(f'EXP:WAV:INCX ',False)
+        #rth.write_bool(f'EXP:WAV:MULT ',False)
+        #rth.write_bool(f'EXP:WAV:INCX ',False)
         
         print("Connected to oscilloscope.")
     except Exception as ex:
@@ -190,19 +190,23 @@ def Set_OSC_Channels(rth, acq_channels,verbose=False):
     
     if len(acq_channels) == 1:
         rth.write_bool(f'EXP:WAV:MULT ',False)
+        
         if verbose:
             print('Single channel acq. set on OSC.', end='')    
     elif len(acq_channels) > 1:
         rth.write_bool(f'EXP:WAV:MULT ',True)
         if verbose:
             print('Multichannel acq. set on OSC:  ', end='')
+        
+        #This is done automatically for all active channels   
         for ii in np.arange(1,5):
             if ii in acq_channels:
                 rth.write_bool(f'CHAN{ii}:EXP ',True)
                 if verbose:
                     print(f'CH{ii} | ', end='')
-            else:
-                rth.write_bool(f'CHAN{ii}:EXP ',False)
+            #else:
+                #rth.write_bool(f'CHAN{ii}:EXP ',False)
+
     print()
 
 def Set_OSC_Timebase(rth, left, right):
@@ -246,16 +250,19 @@ def Acq_OSC_Traces(rth, acq_channels, verbose=False):
     # parametric_x = is True by default
     
     traces = {}
-    tvalues = rth.query_str(f'CHAN{acq_channels[0]}:WAV1:DATA:HEAD?')
+    tvalues = rth.query_str(f'CHAN{acq_channels[0]}:DATA:HEAD?')
     tvalues = [float(s) for s in tvalues.split(',')]
 
-    data_bin_ch = rth.query_bin_or_ascii_float_list(f'FORM REAL,32;:CHAN1:WAV1:DATA?')   
+    for readch in acq_channels:
+        data_bin_ch = rth.query_bin_or_ascii_float_list(f'FORM REAL,32;:CHAN{readch}:DATA?')
+        if len(data_bin_ch) >= (tvalues[2]-1):
+            break
     
     ch_count = len(acq_channels)
     
     if verbose:
         if (int(tvalues[2])*ch_count != len(data_bin_ch)):
-            print(f'OSC readout check: {int(tvalues[2])}*{ch_count} != {len(data_bin_ch)}')
+            raise Warning(f'OSC readout check: {int(tvalues[2])}*{ch_count} != {len(data_bin_ch)}')
         else:
             print(f'OSC readout check: {int(tvalues[2])}*{ch_count} == {len(data_bin_ch)}. OK')
     
@@ -399,7 +406,7 @@ def Send_WFs_to_AWG(wf1,
 
 if __name__ == "__main__":
     rth = Initialise_OSC()
-    acq_channels = (2,)
+    acq_channels = (3,4)
     Set_OSC_Channels(rth, acq_channels)
     xx,xy = Acq_OSC_Traces(rth, acq_channels,verbose = True)
-    
+    plt.plot(np.linspace(*xx),xy[str(acq_channels[0])])
