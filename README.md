@@ -19,7 +19,7 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
     - _all variables in the scope that include `ch1_` and/or `ch2_` are saved alongside the measurement_
     - `wf1/2_xpar`
     - `wf1/2_y`
-- `readout_osc_{n}` _(oscilloscope readout traces, numbered as simple integers, where n is integer enumerating acquired channels)_
+- `readout_osc_{n}` _(oscilloscope readout traces, numbered as simple integers, where {n} is an integer enumerating the acquired channel. For single channel readout, just set to 1)_
     - `0`, `1`, `2`, `3`, ...
         - `xpar `
         - `y`
