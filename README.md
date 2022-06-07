@@ -6,7 +6,7 @@ Strathclyde Neuromorphic Photonics Lab Control: scripts and notebooks.
 Directly control most of our lab instruments, create waveforms, send to AWG, readout Keithley state and multiple oscilloscope readouts and save all the data and metadata into structured, compressed datafiles. 
 It allows for using any number of AWG channels (including none) and for multi-channel R&S oscilloscope acquisition. Custom multi-channel OSC data readout wrapper was implemented for this, which directly reads all requested oscilloscope channels simultaneously (instead of just looping through them).
 
-Among other features in this template, every measurement from the oscilloscope is implemented with a set number of repetition. This enables fast and easy acquisition of large amounts of repeated (sync) readouts across multiple oscilloscope channels with all channels being in sync. Average readouts are also directly provided for each channel over all acquired repetitions.
+Among other features, every measurement from the OSC in the template is implemented with repeated readouts (set by user). This enables fast and easy acquisition of large amounts of repeated readouts across multiple oscilloscope channels with all the channels being in sync. Average readout traces are also directly provided for each channel over all acquired repetitions.
 
 ## Measurement datafile structure
 
