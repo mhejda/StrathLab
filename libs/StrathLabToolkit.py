@@ -8,6 +8,7 @@ v.01
 import warnings
 import numpy as np
 import os
+import sys
 #import pandas as pd
 from time import sleep
 from time import time
@@ -102,12 +103,9 @@ def Visualise_Data_Dict(d,lvl=0):
 
 
         else:
-            if k =='readout_osc' or k =='measurement':
+            if ('readout_osc' in k) or k =='measurement':
                 try:
-                    try:
-                        xpar = d['readout_osc']['mean']['xpar']
-                    except:   
-                        xpar = d['measurement']['mean']['xpar']
+                    xpar = d[k]['mean']['xpar']
                     rep = d['repeats']
                     outp = t+f": {rep}x | {xpar[2]/(xpar[1]-xpar[0]):.2e} Sa/s, {xpar[2]} Sa"
                     print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
@@ -119,12 +117,12 @@ def Visualise_Data_Dict(d,lvl=0):
             
 
         # if the entry is a dictionary
-        if type(d[k])==dict and k != 'readout_osc' and k != 'measurement':
+        if type(d[k])==dict and ('readout_osc' not in k) and k != 'measurement':
             # visualise THAT dictionary with +1 indent
             Visualise_Data_Dict(d[k],lvl+1)
 
 #%% MOCK INSTRUMENT (for )
-def Initiate_Mock(address='0'):
+def Initialise_Mock(address='0'):
     mock = Mock()
     return mock
 
@@ -138,7 +136,7 @@ class Mock():
 
 #%% KEITHLEY 2450 control
 
-def Initiate_Keithley(address="USB0::0x05E6::0x2450::04497230::INSTR"):
+def Initialise_Keithley(address="USB0::0x05E6::0x2450::04497230::INSTR"):
     from pymeasure.instruments.keithley import Keithley2450
     
     sm = Keithley2450(address)
@@ -157,7 +155,7 @@ def Keithley_GetReadout(sm):
 
 ##### ROHDE SCHWARZ OSCILLOSCOPE
 ### TODO: change name to init/initialise
-def Initiate_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
+def Initialise_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
     # Creates oscilloscope instance
     from RsInstrument.RsInstrument import RsInstrument
     rth=None
@@ -169,6 +167,9 @@ def Initiate_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
         rth.visa_timeout = 20000 # Timeout for VISA Read Operations
         rth.opc_timeout = 3000 # Timeout for opc-synchronised operations
         rth.instrument_status_checking = True # Error check after each command
+        rth.write_bool(f'EXP:WAV:MULT ',False)
+        rth.write_bool(f'EXP:WAV:INCX ',False)
+        
         print("Connected to oscilloscope.")
     except Exception as ex:
         print('Error initializing the instrument session:\n' + ex.args[0])
@@ -182,6 +183,28 @@ def Initiate_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
     rth.data_chunk_size = 100000
     return rth
 
+def Set_OSC_Channels(rth, acq_channels,verbose=False):
+    if not set(acq_channels).issubset((1,2,3,4)):
+        warnings.warn("At least one of the specified OSC channel numbers is out of allowed range.")
+        sys.exit()  
+    
+    if len(acq_channels) == 1:
+        rth.write_bool(f'EXP:WAV:MULT ',False)
+        if verbose:
+            print('Single channel acq. set on OSC.', end='')    
+    elif len(acq_channels) > 1:
+        rth.write_bool(f'EXP:WAV:MULT ',True)
+        if verbose:
+            print('Multichannel acq. set on OSC:  ', end='')
+        for ii in np.arange(1,5):
+            if ii in acq_channels:
+                rth.write_bool(f'CHAN{ii}:EXP ',True)
+                if verbose:
+                    print(f'CH{ii} | ', end='')
+            else:
+                rth.write_bool(f'CHAN{ii}:EXP ',False)
+    print()
+
 def Set_OSC_Timebase(rth, left, right):
     dt=right-left
     t0=0.5*(right+left)
@@ -193,24 +216,52 @@ def Acq_OSC_Trace(rth, chan,verbose=False,parametric_x=False):
     # Returned format is either linspace-compatible tuple of three values (parametric_x = True),
     #  or the full vector of t-values (parametric_x = False)
     if chan in (1,2,3,4):
+           
+        rth.write_str(f'EXP:WAV:SOUR C{chan}W1')       
         tvalues = rth.query_str(f'CHAN{chan}:WAV1:DATA:HEAD?')
         tvalues = [float(s) for s in tvalues.split(',')]
+        print(tvalues)
 
-        scpi_string = f'FORM REAL,32;:CHAN{chan}:DATA?'
         if verbose:
-            print(f'Processing SCPI comm: {scpi_string}')
-        data_bin_ch = rth.query_bin_or_ascii_float_list(scpi_string)   
+            print(f'Processing SCPI comm: FORM REAL,32;:CHAN{chan}:WAV1:DATA?')
+        data_bin_ch = rth.query_bin_or_ascii_float_list(f'FORM REAL,32;:CHAN{chan}:WAV1:DATA?')   
         if verbose:
             print(f'OSC: Channel {chan} readout successful.')
         
         if parametric_x:
-            return (tvalues[0],tvalues[1],int(tvalues[2])), data_bin_ch
+            if tvalues[3] == 1:
+                return (tvalues[0],tvalues[1],int(tvalues[2])), data_bin_ch                
+            else:
+                raise Warning('CH:DATA:HEAD?:4 -> Number of values per sample interval !=1. Increasing xpar length.')
+                return (tvalues[0],tvalues[1],int(tvalues[2]*tvalues[3])), data_bin_ch 
         else:
             t=np.arange(tvalues[0],tvalues[1],(tvalues[1]-tvalues[0])/tvalues[2])
             return t, data_bin_ch
     else:
         raise Warning('Wrong channel selected for readout. Allowed values: 1,2,3,4')
-        
+
+def Acq_OSC_Traces(rth, acq_channels, verbose=False):
+    # UPDATED VERSION of Acq_OSC_Trace, allows for simultaneous multichannel acquisiton
+    # Acquires a single trace from a given channel of the scope.
+    # parametric_x = is True by default
+    
+    traces = {}
+    tvalues = rth.query_str(f'CHAN{acq_channels[0]}:WAV1:DATA:HEAD?')
+    tvalues = [float(s) for s in tvalues.split(',')]
+
+    data_bin_ch = rth.query_bin_or_ascii_float_list(f'FORM REAL,32;:CHAN1:WAV1:DATA?')   
+    
+    ch_count = len(acq_channels)
+    
+    if verbose:
+        if (int(tvalues[2])*ch_count != len(data_bin_ch)):
+            print(f'OSC readout check: {int(tvalues[2])}*{ch_count} != {len(data_bin_ch)}')
+        else:
+            print(f'OSC readout check: {int(tvalues[2])}*{ch_count} == {len(data_bin_ch)}. OK')
+    
+    for chno, iii in enumerate(acq_channels):
+        traces[str(iii)] = data_bin_ch[chno::ch_count]
+    return (tvalues[0],tvalues[1],int(tvalues[2])), traces                      
 
 #%% awg functions
         
@@ -345,3 +396,10 @@ def Send_WFs_to_AWG(wf1,
                 return wf1_xpar, None, fig
             else:
                 return None, wf2_xpar, fig    
+
+if __name__ == "__main__":
+    rth = Initialise_OSC()
+    acq_channels = (2,)
+    Set_OSC_Channels(rth, acq_channels)
+    xx,xy = Acq_OSC_Traces(rth, acq_channels,verbose = True)
+    
