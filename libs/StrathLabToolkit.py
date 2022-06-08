@@ -9,13 +9,13 @@ import warnings
 import numpy as np
 import os
 import sys
-#import pandas as pd
-from time import sleep
-from time import time
 import matplotlib.pyplot as plt
 from IPython.display import Markdown #for text coloring
 #import random
 #import pickle
+#import pandas as pd
+#from time import sleep
+#from time import time
 
 try:
     import pyarbtools
@@ -33,6 +33,7 @@ except:
 
 ##### UTILITY
 def Find_Nearest(array, value):
+    # credit: @Demitri at https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
@@ -54,7 +55,7 @@ def Get_Files_From_Dir(directory=None):
         _, _, filenames = next(os.walk(os.path.join(os.getcwd(),directory)))
         return filenames        
 
-def MovingAverage(x, N):
+def Moving_Average(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0)) 
     return (cumsum[N:] - cumsum[:-N]) / float(N)
 
