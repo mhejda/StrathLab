@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Library of utility functions for measurements in Antonio Hurtados lab at IoP, Strathclyde
-v.01
-@author: Matej Hejda, Dafydd Owen-Newns
+v1.1
+@author: Matěj Hejda, Dafydd Owen-Newns
 """
 
 import warnings
@@ -30,6 +30,41 @@ except:
 '''
 
 ##############################################################################
+#### Dictionary subclass, to allow for more convenient access.
+#### source: https://goodcode.io/articles/python-dict-object/
+class objdict_root(dict):
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        else:
+            raise AttributeError("No such attribute: " + name)
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __delattr__(self, name):
+        if name in self:
+            del self[name]
+        else:
+            raise AttributeError("No such attribute: " + name)
+    def contents(self):
+        Visualise_Data_Dict(self,lvl=0)
+            
+class objdict(dict):
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        else:
+            raise AttributeError("No such attribute: " + name)
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __delattr__(self, name):
+        if name in self:
+            del self[name]
+        else:
+            raise AttributeError("No such attribute: " + name)
 
 ##### UTILITY
 def Find_Nearest(array, value):
