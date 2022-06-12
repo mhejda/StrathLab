@@ -19,7 +19,7 @@ Among other features, the repeated acquisition enables fast and easy recording o
 
 The measurements are saved in datafiles designed to store all data AND metadata for the measurement.
 The goal is to have the datafile completely self-sustained, minimizing the need for referencing the corresponding lab-book entry or writing down parameters and filenames by hand.
-The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary object (dict) with following hierarchy:
+The datafile is stored as a LZMA-compressed, serialized (pickled), modified dictionary subclass (objdict), which wraps dict with ability to use Class-like queries for stored data (f.e. objdict.repeats). It has the following hierarchy:
 
 - `fname` _(stores the reference filename defined during acquisition, in case the file would get renamed)_
 - `date` _(full date of acquistion, including HH:MM:SS)_
@@ -29,12 +29,9 @@ The datafile is stored as a LZMA-compressed, serialized (pickled) dictionary obj
     - `wf1/2_xpar`
     - `wf1/2_y`
 - `readout_osc_{n}` _(oscilloscope readout traces, numbered as simple integers, where {n} is an integer enumerating the acquired channel. For single channel readout, just set to 0)_
-    - `0`, `1`, `2`, `3`, ...
-        - `xpar `
-        - `y`
-    - `mean` _(simple arithmetic mean for all acquired measurements, useful for quickly checking readouts from a datafile)_
-        - `xpar`
-        - `y`
+    - `xpar `
+    - `y0`, `y1`, `y2`, `y3`, ...
+    - `ymean` _(simple arithmetic mean for all acquired measurements, useful for quickly checking readouts from a datafile)_
 
 NOTE: `xpar` is a three-value tuple which can be directly fed to `np.linspace(*xpar)` to create a correspodning time-values vector for any recorded data.
 
