@@ -11,8 +11,11 @@ import os
 import sys
 import matplotlib.pyplot as plt
 from IPython.display import Markdown #for text coloring
+from datetime import datetime
+from tqdm import tqdm
+import lzma
 #import random
-#import pickle
+import pickle
 #import pandas as pd
 #from time import sleep
 #from time import time
@@ -47,8 +50,67 @@ class objdict_root(dict):
             del self[name]
         else:
             raise AttributeError("No such attribute: " + name)
-    def contents(self):
-        Visualise_Data_Dict(self,lvl=0)
+    
+    def plot(self):
+        
+        fig,ax = plt.subplots(self.readout_osc_count,1,figsize=(6,3+2*self.readout_osc_count))
+        #fig.suptitle("Mean traces for all recorded oscilloscope channels.")
+        for ind in range(self.readout_osc_count):
+            xpar = self[f'readout_osc_{ind}'].xpar
+            y = self[f'readout_osc_{ind}'].ymean*1000
+            ax[ind].plot(np.linspace(*xpar),y,lw=0.75,color='xkcd:indigo',label=f'readout_osc_{ind}')
+            ax[ind].set_ylabel('Voltage [mV]')
+            ax[ind].set_xlabel('Time [s]')
+            ax[ind].set_xlim(xpar[0],xpar[1])
+            ax[ind].legend(fontsize=10)
+        
+        
+    def contents(self,lvl=0,key=None):
+        # by binnev, from: https://stackoverflow.com/questions/15023333/simple-tool-library-to-visualize-huge-python-dict
+        # go through the dictionary alphabetically. Modified for StrathLab measurement-data dictionaries
+        if key==None:
+            d=self
+        else:
+            d=self[key]
+        for k in sorted(d):
+    
+            # print the table header if we're at the beginning
+            if lvl == 0 and k == sorted(d)[0]:
+                print('{:<25} {:<15} {:<10}'.format('KEY','LEVEL','TYPE'))
+                print('-'*79)
+    
+            indent = '  '*lvl # indent the table to visualise hierarchy
+            
+            tname = type(d[k]).__name__
+            t = f'<{tname}>'
+    
+            printable_types = ('int','float','str','tuple')
+            if tname in printable_types:
+                if 'xpar' in k:
+                    outp = t+f": {d[k][2]/(d[k][1]-d[k][0]):.2e} Sa/s, {d[k][2]} Sa"
+                    print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))    
+                else:
+                    print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t+": "+str(d[k])))
+    
+    
+            else:
+                if ('readout_osc' in k) or k =='measurement':
+                    try:
+                        xpar = d[k]['xpar']
+                        rep = d['repeats']
+                        outp = t+f": {rep}x | {xpar[2]/(xpar[1]-xpar[0]):.2e} Sa/s, {xpar[2]} Sa"
+                        print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
+                    except:
+                        print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t+": "+str(d[k])))
+                else:
+                    # print details of each entry
+                    print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,t))
+                
+    
+            # if the entry is a dictionary
+            if (type(d[k])==dict or type(d[k]).__name__=='objdict') and ('readout_osc' not in k) and k != 'measurement':
+                # visualise THAT dictionary with +1 indent
+                self.contents(lvl=lvl+1,key=k)
             
 class objdict(dict):
     def __getattr__(self, name):
@@ -141,7 +203,7 @@ def Visualise_Data_Dict(d,lvl=0):
         else:
             if ('readout_osc' in k) or k =='measurement':
                 try:
-                    xpar = d[k]['mean']['xpar']
+                    xpar = d[k]['xpar']
                     rep = d['repeats']
                     outp = t+f": {rep}x | {xpar[2]/(xpar[1]-xpar[0]):.2e} Sa/s, {xpar[2]} Sa"
                     print("{:<25} {:<15} {:<10}".format(indent+str(k),lvl,outp))
@@ -153,7 +215,7 @@ def Visualise_Data_Dict(d,lvl=0):
             
 
         # if the entry is a dictionary
-        if type(d[k])==dict and ('readout_osc' not in k) and k != 'measurement':
+        if (type(d[k])==dict or type(d[k]).__name__=='objdict') and ('readout_osc' not in k) and k != 'measurement':
             # visualise THAT dictionary with +1 indent
             Visualise_Data_Dict(d[k],lvl+1)
 
@@ -320,6 +382,66 @@ def Initialise_AWG(address="130.159.91.79"):
 def Calculate_WF_xpar(wf,sr):
     return (0,(wf.shape[0]-1)/sr,wf.shape[0])
 
+def Initialise_Notebook(isHot,datadir='data', figsdir = 'figs'):
+    datadir_full = os.path.join(os.getcwd(),datadir)
+    # Ensure folders for data and figs exist
+    if not os.path.isdir(datadir_full):
+        os.mkdir(datadir_full)
+    if not os.path.isdir(os.path.join(os.getcwd(),figsdir)):
+        os.mkdir(os.path.join(os.getcwd(),figsdir))
+    
+    # Instrument libraries
+    try:
+        #from RsInstrument import BinFloatFormat
+        #import RsInstrument as rs
+        #import pyvisa as visa
+        import pyarbtools
+        display (Markdown('<span style="color: #1fa774">All instrument control libraries found and loaded.</span>'))
+    except:
+        display (Markdown('<span style="color: #e17701;font-weight:bold">At least one of the instrument library failed to load. Remote control of lab equipment is not operational.</span>'))
+
+    
+    # Initiate remote control for lab instruments
+    awg = None
+    rth = None
+    sm = None
+    
+    if isHot:
+        try:
+            awg = pyarbtools.instruments.M8190A('130.159.91.79', port=5025, timeout=30, reset=False)
+            print('Connected to AWG.')
+            print(awg.query('*IDN?'))
+            print()
+        except:
+            try:
+                awg = pyarbtools.instruments.M8190A('127.0.0.1', port=5025, timeout=30, reset=False)
+                print('Connected to AWG.')
+                print(awg.query('*IDN?'))
+                print()
+            except:
+                warnings.warn('AWG not connected.',RuntimeWarning)
+                awg = Mock()
+        
+        try:
+            rth = Initialise_OSC()
+        except:
+            warnings.warn('Oscilloscope not connected.',RuntimeWarning)
+            rth = Mock()
+            
+        try:
+            sm = Initialise_Keithley()
+            sm.measure_current(current=0.02, auto_range=True)
+            sm.apply_voltage(voltage_range=2, compliance_current=0.02)    
+        except:
+            warnings.warn('Keithley not connected.',RuntimeWarning)
+            sm = Mock()       
+            
+    else:
+        awg = Mock()
+        rth = Mock()
+        sm = Mock()
+    return awg, rth, sm, datadir_full
+
 def Send_WFs_to_AWG(wf1,
                     out1,
                     ch1_V, 
@@ -446,3 +568,167 @@ if __name__ == "__main__":
     Set_OSC_Channels(rth, acq_channels)
     xx,xy = Acq_OSC_Traces(rth, acq_channels,verbose = True)
     plt.plot(np.linspace(*xx),xy[str(acq_channels[0])])
+
+def Get_Modulation_Variables(globals_in,
+                             using_AWG_channels,
+                             samplerate,
+                             saved_obj):
+    #### Saving all modulation parameters via keywords search
+    if using_AWG_channels != None:
+        saved_obj['modulation'] = objdict()
+        saved_obj['modulation']['samplerate'] = samplerate
+        for jjj in using_AWG_channels:
+            #wholex = eval(f'wf{jjj}_x')
+            saved_obj['modulation'][f'wf{jjj}_xpar'] = globals_in[f'wf{jjj}_xpar']
+            saved_obj['modulation'][f'wf{jjj}_y'] = globals_in[f'wf{jjj}_y']
+
+            print(f'Mod parameters (CH{jjj}) saved:\n[',end='')
+            #saved_wf_par_counter = 0
+            for var in globals_in:
+                if f'ch{jjj}_' in var:
+                    saved_obj['modulation'][var] = globals_in[var]
+                    #saved_wf_par_counter = saved_wf_par_counter+1
+                    print(var,end=', ')
+            #print(f'], in total {saved_wf_par_counter} variables saved')
+    else:
+        print(f'Modulation is off. No mod parameters saved.')
+        saved_obj['modulation'] = None
+    return saved_obj
+  
+def Get_OSC_readouts(acq_channels,
+                     repeats,
+                     saved_obj,
+                     awg, 
+                     rth, 
+                     sm,
+                     fname,
+                     datadir_full,
+                     isSaving):
+    #### Filename synthesis
+    now = datetime.now()
+    saved_obj['date'] = now.strftime("%Y/%m/%d, %H:%M:%S")
+    
+    full_fname = now.strftime("%Y-%m-%d")+'__'+fname+'.pkl.lz'
+    full_filepath = os.path.join(datadir_full,full_fname)
+    
+    saved_obj['fname'] = fname
+    saved_obj['repeats'] = repeats 
+    
+    #### Catches integer-only channel values, converts them to required tuple format
+    if isinstance(acq_channels,int):
+        channel_number = acq_channels
+        acq_channels = (channel_number,)
+    channelcount = len(acq_channels)
+    saved_obj['readout_osc_count'] = channelcount
+    
+    #### Overwrite check
+    if os.path.isfile(full_filepath):
+        warnings.warn("File exists already! Press Enter to continue...")
+        entered = input()
+        if entered != '':
+            sys.exit()  
+        print('Proceeding with acquisiton...')
+    
+    display (Markdown(f'<span style="color: #014d4e;font-weight:bold">Recording data into: {fname}.</span>'))
+    
+    #### Input channels check:
+    if not set(acq_channels).issubset((1,2,3,4)):
+        warnings.warn("At least one of the specified OSC channel numbers is out of allowed range.")
+        sys.exit() 
+    else:
+        Set_OSC_Channels(rth, acq_channels, verbose = True)    
+        
+    #### Saving Keithley voltage if available
+    try:
+        sm_I,sm_V = Keithley_GetReadout(sm)
+        saved_obj['params']['V_sm'] = sm_V
+        print(f'Keithley SM voltage: {sm_V}')
+    except:
+        pass
+    
+    #### Create plots: overlay of all measurements, mean+min/max
+    if channelcount == 1:
+        figR,axR = plt.subplots(2,1,figsize=(9,8),gridspec_kw={'height_ratios':(1,1.5)})
+    else:
+        figR,axR = plt.subplots(2,channelcount,figsize=(7+2*channelcount,8),gridspec_kw={'height_ratios':(1,1.5)})
+ 
+    #### Get readout shape to create according arrays
+    ytotal = objdict()
+    ymin = {}
+    ymax = {}
+
+    t, ys = Acq_OSC_Traces(rth, acq_channels)
+    for ch_no, ch in enumerate(acq_channels):        
+        y = np.asarray(ys[str(ch)])
+
+        ytotal[str(ch)] = np.zeros(y.shape)
+        ymin[str(ch)] = y.copy()
+        ymax[str(ch)] = y.copy() 
+        saved_obj[f'readout_osc_{ch_no}'] = objdict()
+    
+    #### Measure
+    pbar = tqdm(total=repeats*len(acq_channels))
+    #pbar.set_description()
+    for jjj in range(repeats):          
+        xpar, ys = Acq_OSC_Traces(rth, acq_channels)
+        for ch_no, ch in enumerate(acq_channels):  
+            y = np.asarray(y)
+            
+            saved_obj[f'readout_osc_{ch_no}'][f'xpar'] = xpar
+            saved_obj[f'readout_osc_{ch_no}'][f'y{jjj}'] = ys[str(ch)]
+            
+            if channelcount == 1:
+                axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+            else:
+                axR[0,ch_no].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+     
+            ytotal[str(ch)] = ytotal[str(ch)]+ys[str(ch)]
+            ymin[str(ch)] = np.minimum(ymin[str(ch)],ys[str(ch)])
+            ymax[str(ch)] = np.maximum(ymax[str(ch)],ys[str(ch)])
+            pbar.update(1)
+    pbar.close()       
+
+    #### Render mean, maximum, minimum readouts
+    
+    if len(acq_channels) == 1:
+        ytotal[str(ch)] = ytotal[str(ch)]/repeats     
+        #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
+        axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+        axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+        axR[1].legend()
+        axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
+        axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
+        axR[0].set_ylabel('Overlay of all recorded traces')
+        axR[1].set_ylabel('Average trace\n + sample-wise min/max')
+
+        #### Dump mean trace into the file for convenience
+        #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
+        saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
+    else:    
+        for ch_no, ch in enumerate(acq_channels):       
+            ytotal[str(ch)] = ytotal[str(ch)]/repeats     
+            #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
+            axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+            axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+            axR[1,ch_no].legend()
+            axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+            axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+            axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
+            axR[1,ch_no].set_ylabel('Average trace\n + sample-wise min/max')
+
+            #### Dump mean trace into the file for convenience
+            #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
+            #saved_obj[f'readout_osc_{ch_no}']['mean']['xpar'] = xpar
+            saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
+        figR.tight_layout()
+
+    #### Save everything into LZMA-compressed pickled (serialized) file
+    if isSaving:
+        #memsize = sys.getsizeof(saved_obj)
+        #print(f'Object size (memory): {memsize} [{lab.filesize_fmt(memsize)}]')
+        with lzma.open(full_filepath,"wb",preset=3) as f:
+            pickle.dump(saved_obj,f)
+            print(f'Measurement saved, time: {saved_obj["date"]}')
+        print('Filesize: '+Filesize_Fmt(os.stat(full_filepath).st_size)) 
+    
+    return saved_obj
