@@ -675,7 +675,7 @@ def Get_OSC_readouts(acq_channels,
             y = np.asarray(y)
             
             saved_obj[f'readout_osc_{ch_no}'][f'xpar'] = xpar
-            saved_obj[f'readout_osc_{ch_no}'][f'y{jjj}'] = ys[str(ch)]
+            saved_obj[f'readout_osc_{ch_no}'][f'y{jjj}'] = np.asarray(ys[str(ch)])
             
             if channelcount == 1:
                 axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
