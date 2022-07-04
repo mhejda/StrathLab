@@ -128,6 +128,32 @@ class objdict(dict):
         else:
             raise AttributeError("No such attribute: " + name)
 
+##### STYLE
+"""
+import matplotlib.style as style
+style.use('default')
+plt.rcParams['font.family']='sans-serif'
+plt.rcParams['mathtext.fontset']='cm'
+plt.rcParams['axes.labelsize'] = 11
+"""
+
+def Generate_Colormap(colorlist,granularity=1024):
+    #credit: @armatita, from https://stackoverflow.com/questions/57268627/matplotlib-color-gradient-between-two-colors
+    from matplotlib.colors import LinearSegmentedColormap
+    cm = LinearSegmentedColormap.from_list(
+            "Custom", colorlist, N=granularity)
+    return cm
+
+def Adjust_Colormap(cmap, value=1.):
+    import colorsys
+    import matplotlib.colors as mcolors
+    colors = cmap(np.arange(cmap.N))
+    hls = np.array([colorsys.rgb_to_hls(*c) for c in colors[:,:3]])
+    hls[:,1] *= value
+    rgb = np.clip(np.array([colorsys.hls_to_rgb(*c) for c in hls]), 0,1)
+    return mcolors.LinearSegmentedColormap.from_list("", rgb)
+
+        
 ##### UTILITY
 def Find_Nearest(array, value):
     # credit: @Demitri at https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
@@ -552,8 +578,8 @@ def Send_WFs_to_AWG(wf1,
             fig,ax=plt.subplots(1,1,figsize=(12,3),sharex=True)
             
             wf_y = eval(f'wf{using_AWG_channels[0]}_y')
-            wf_x = eval(f'wf{using_AWG_channels[0]}_x')
-            ax.plot(wf_x,wf_y,color='xkcd:indigo',alpha=0.6) 
+            wf_xpar = eval(f'wf{using_AWG_channels[0]}_xpar')
+            ax.plot(np.linspace(*wf_xpar),wf_y,color='xkcd:indigo',alpha=0.6) 
             ax.set_title(f'AWG Channel {using_AWG_channels[0]} output')
             ax.set_xlabel('Time')
 
