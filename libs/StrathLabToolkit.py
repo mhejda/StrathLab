@@ -617,12 +617,13 @@ def Get_Modulation_Variables(globals_in,
                     print(var,end=', ')
             #print(f'], in total {saved_wf_par_counter} variables saved')
     else:
-        print(f'Modulation is off. No mod parameters saved.')
+        print('Modulation is off. No mod parameters saved.')
         saved_obj['modulation'] = None
     return saved_obj
   
 def Get_OSC_readouts(acq_channels,
                      repeats,
+                     osc_channel_info,
                      saved_obj,
                      awg, 
                      rth, 
@@ -691,6 +692,10 @@ def Get_OSC_readouts(acq_channels,
         ymin[str(ch)] = y.copy()
         ymax[str(ch)] = y.copy() 
         saved_obj[f'readout_osc_{ch_no}'] = objdict()
+        try:
+            saved_obj[f'readout_osc_{ch_no}']['description'] = osc_channel_info[str(ch)]
+        except:
+            pass
     
     #### Measure
     pbar = tqdm(total=repeats*len(acq_channels))
