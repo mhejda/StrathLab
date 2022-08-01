@@ -761,5 +761,7 @@ def Get_OSC_readouts(acq_channels,
             pickle.dump(saved_obj,f)
             print(f'Measurement saved, time: {saved_obj["date"]}')
         print('Filesize: '+Filesize_Fmt(os.stat(full_filepath).st_size)) 
+        
+        figR.savefig(full_filepath[:-7]+".png")
     
     return saved_obj
