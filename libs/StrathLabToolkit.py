@@ -4,21 +4,16 @@ Library of utility functions for measurements in Antonio Hurtados lab at IoP, St
 v1.1
 @author: Matěj Hejda, Dafydd Owen-Newns
 """
+import os, sys, warnings, lzma, pickle
 
-import warnings
 import numpy as np
-import os
-import sys
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from matplotlib.patches import Polygon
+
 from IPython.display import Markdown #for text coloring
 from datetime import datetime
 from tqdm import tqdm
-import lzma
-#import random
-import pickle
-#import pandas as pd
-#from time import sleep
-#from time import time
 
 try:
     import pyarbtools
@@ -153,7 +148,32 @@ def Adjust_Colormap(cmap, value=1.):
     rgb = np.clip(np.array([colorsys.hls_to_rgb(*c) for c in hls]), 0,1)
     return mcolors.LinearSegmentedColormap.from_list("", rgb)
 
-        
+
+def Plot_Gradient(ax_object,curvex, curvey,color='xkcd:magenta',ymin=0,ymax=0.02):
+    # Plot spike with gradient
+    line, = ax_object.plot(curvex, curvey, color=color, alpha=1.0,lw=1)
+
+    fill_color = line.get_color()
+    
+    zorder = line.get_zorder()
+    alpha = line.get_alpha()
+    alpha = 0.75 if alpha is None else alpha
+    
+    z = np.empty((100, 1, 4), dtype=float)
+    rgb = mcolors.colorConverter.to_rgb(fill_color)
+    z[:,:,:3] = rgb
+    z[:,:,-1] = np.linspace(0, alpha, 100)[:,None]
+    
+    xmin, xmax = curvex.min(), curvex.max()  #curvey.min, curvey.max()
+    im = ax_object.imshow(z, aspect='auto', extent=[xmin, xmax, ymin, ymax],
+                   origin='lower', zorder=zorder)
+    
+    xy = np.column_stack([curvex, curvey])
+    xy = np.vstack([[xmin, ymin], xy, [xmax, ymin], [xmin, ymin]])
+    clip_path = Polygon(xy, facecolor='none', edgecolor='none', closed=True)
+    ax_object.add_patch(clip_path)
+    im.set_clip_path(clip_path)   
+       
 ##### UTILITY
 def Find_Nearest(array, value):
     # credit: @Demitri at https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
@@ -199,6 +219,10 @@ def Factor_Int_2(n):
             break
         val -= 1
     return val, val2
+
+def Savefig(fig,fname,path='figs'):
+    fig.savefig(f'{path}/FIG__{fname}.pdf')
+    fig.savefig(f'{path}/FIG__{fname}.png',dpi=300,transparent=False)
 
 #### SPECIFIC USE UTILITY
 
