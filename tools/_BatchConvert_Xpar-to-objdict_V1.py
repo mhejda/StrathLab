@@ -6,7 +6,6 @@ Created on Wed May 12 10:12:13 2021
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import os, sys, importlib, lzma, pickle
 
 sys.path.insert(0,'C:/git/StrathLab/libs') #Lab PC
@@ -19,20 +18,23 @@ importlib.reload(lab)
 def Convert(remove_csvs = True):
     files = lab.Get_Files_From_Dir()
     
+    if not os.path.exists('data'):
+        os.mkdir('data')
+    
     converted = 0
     
     for fname in files:
         if '{Y}' in fname and os.path.exists(fname[:-7]+'{Xpar}.csv'):
-            with lzma.open((os.path.join(os.getcwd(),fname[:-14]+'.pkl.lz')),"wb",preset=3) as f:
+            with lzma.open((os.path.join(os.getcwd(),'data',fname[:-14]+'.pkl.lz')),"wb",preset=3) as f:
                 d = lab.objdict()
                 
-                print('Found (X,Y): '+ fname[:-7],end='')
+                print('Found (X,Y): '+ fname[:-8],end='')
                 
                 jjj = 0
                 d['fname'] = fname
                 d[f'repeats'] = 1
                 d[f'modulation'] = None
-                d[f'readout_osc_0'] = {}
+                d[f'readout_osc_0'] = lab.objdict()
                 xpar_arr = np.loadtxt(fname[:-7]+'{Xpar}.csv',delimiter=",")
                 d[f'readout_osc_0'][f'xpar'] = (xpar_arr[0],xpar_arr[1],int(xpar_arr[2]))
                 d[f'readout_osc_0'][f'y{jjj}'] = np.loadtxt(fname,delimiter=",")

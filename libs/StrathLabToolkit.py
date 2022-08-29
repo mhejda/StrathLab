@@ -223,6 +223,8 @@ def Factor_Int_2(n):
 def Savefig(fig,fname,path='figs'):
     fig.savefig(f'{path}/FIG__{fname}.pdf')
     fig.savefig(f'{path}/FIG__{fname}.png',dpi=300,transparent=False)
+    
+    print('Figure saved in: ' + os.path.join(os.getcwd(),path,f'FIG__{fname}') + ' (.png, .pdf).' )
 
 #### SPECIFIC USE UTILITY
 
@@ -750,7 +752,7 @@ def Get_OSC_readouts(acq_channels,
         #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
         axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
         axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-        axR[1].legend()
+        axR[1].legend(loc='upper right')
         axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
         axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
         axR[0].set_ylabel('Overlay of all recorded traces')
@@ -765,7 +767,7 @@ def Get_OSC_readouts(acq_channels,
             #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
             axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
             axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-            axR[1,ch_no].legend()
+            axR[1,ch_no].legend(loc='upper right')
             axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
             axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
             axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
