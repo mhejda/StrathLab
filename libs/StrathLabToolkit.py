@@ -124,13 +124,21 @@ class objdict(dict):
             raise AttributeError("No such attribute: " + name)
 
 ##### STYLE
-"""
-import matplotlib.style as style
-style.use('default')
-plt.rcParams['font.family']='sans-serif'
-plt.rcParams['mathtext.fontset']='cm'
-plt.rcParams['axes.labelsize'] = 11
-"""
+def mpl_Style_Preamble(plt):
+    import matplotlib.style as style
+    style.use('default')
+    plt.rcParams['font.family']='sans-serif'
+    plt.rcParams['axes.labelsize'] = 10
+    plt.rcParams['mathtext.fontset'] = 'custom'
+    plt.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+    plt.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+    plt.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+
+def Fig_ShadedBg(fig,start=(0.0,0.5),h=0.5,w=1.0,color='xkcd:dark green',alpha=0.1):
+    # Fills background of a Figure object
+    fig.patches.extend([plt.Rectangle(start,w,h,
+                                  fill=True, color=color, alpha=alpha, zorder=-1,
+                                  transform=fig.transFigure, figure=fig)])
 
 def Generate_Colormap(colorlist,granularity=1024):
     #credit: @armatita, from https://stackoverflow.com/questions/57268627/matplotlib-color-gradient-between-two-colors
@@ -621,6 +629,12 @@ if __name__ == "__main__":
     xx,xy = Acq_OSC_Traces(rth, acq_channels,verbose = True)
     plt.plot(np.linspace(*xx),xy[str(acq_channels[0])])
 
+def Clear_All_Ch_Variables(globals_in):
+    for jjj in (1,2):
+        for var in globals_in:
+            if f'ch{jjj}_' in var:
+                del globals_in[var]
+                
 def Get_Modulation_Variables(globals_in,
                              using_AWG_channels,
                              samplerate,
@@ -699,12 +713,6 @@ def Get_OSC_readouts(acq_channels,
     except:
         pass
     
-    #### Create plots: overlay of all measurements, mean+min/max
-    if channelcount == 1:
-        figR,axR = plt.subplots(2,1,figsize=(9,8),gridspec_kw={'height_ratios':(1,1.5)})
-    else:
-        figR,axR = plt.subplots(2,channelcount,figsize=(7+2*channelcount,8),gridspec_kw={'height_ratios':(1,1.5)})
- 
     #### Get readout shape to create according arrays
     ytotal = objdict()
     ymin = {}
@@ -723,6 +731,12 @@ def Get_OSC_readouts(acq_channels,
         except:
             pass
     
+    if channelcount == 1:
+        figR,axR = plt.subplots(2,1,figsize=(9,8),gridspec_kw={'height_ratios':(1,1.5)})
+    else:
+        figR,axR = plt.subplots(2,channelcount,figsize=(7+2*channelcount,8),gridspec_kw={'height_ratios':(1,1.5)})
+    resumePlotting = True
+    
     #### Measure
     pbar = tqdm(total=repeats*len(acq_channels))
     #pbar.set_description()
@@ -734,50 +748,20 @@ def Get_OSC_readouts(acq_channels,
             saved_obj[f'readout_osc_{ch_no}'][f'xpar'] = xpar
             saved_obj[f'readout_osc_{ch_no}'][f'y{jjj}'] = np.asarray(ys[str(ch)])
             
-            if channelcount == 1:
-                axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
-            else:
-                axR[0,ch_no].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+            if resumePlotting:
+                try:
+                    if channelcount == 1:
+                        axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+                    else:
+                        axR[0,ch_no].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+                except:
+                    resumePlotting = False
      
             ytotal[str(ch)] = ytotal[str(ch)]+ys[str(ch)]
             ymin[str(ch)] = np.minimum(ymin[str(ch)],ys[str(ch)])
             ymax[str(ch)] = np.maximum(ymax[str(ch)],ys[str(ch)])
             pbar.update(1)
     pbar.close()       
-
-    #### Render mean, maximum, minimum readouts
-    
-    if len(acq_channels) == 1:
-        ytotal[str(ch)] = ytotal[str(ch)]/repeats     
-        #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
-        axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
-        axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-        axR[1].legend(loc='upper right')
-        axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
-        axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
-        axR[0].set_ylabel('Overlay of all recorded traces')
-        axR[1].set_ylabel('Average trace\n + sample-wise min/max')
-
-        #### Dump mean trace into the file for convenience
-        #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
-        saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
-    else:    
-        for ch_no, ch in enumerate(acq_channels):       
-            ytotal[str(ch)] = ytotal[str(ch)]/repeats     
-            #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
-            axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
-            axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-            axR[1,ch_no].legend(loc='upper right')
-            axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
-            axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
-            axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
-            axR[1,ch_no].set_ylabel('Average trace\n + sample-wise min/max')
-
-            #### Dump mean trace into the file for convenience
-            #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
-            #saved_obj[f'readout_osc_{ch_no}']['mean']['xpar'] = xpar
-            saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
-        figR.tight_layout()
 
     #### Save everything into LZMA-compressed pickled (serialized) file
     if isSaving:
@@ -786,8 +770,49 @@ def Get_OSC_readouts(acq_channels,
         with lzma.open(full_filepath,"wb",preset=3) as f:
             pickle.dump(saved_obj,f)
             print(f'Measurement saved, time: {saved_obj["date"]}')
-        print('Filesize: '+Filesize_Fmt(os.stat(full_filepath).st_size)) 
+        print('Filesize: '+Filesize_Fmt(os.stat(full_filepath).st_size))
+    
+    #### VISUALIZATION SECTION
+    
+    #### Create plots: overlay of all measurements, mean+min/max
+    try:
         
-        figR.savefig(full_filepath[:-7]+".png")
+        #### Render mean, maximum, minimum readouts
+        if len(acq_channels) == 1:
+            ytotal[str(ch)] = ytotal[str(ch)]/repeats     
+            #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
+            axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+            axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+            axR[1].legend(loc='upper right')
+            axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
+            axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
+            axR[0].set_ylabel('Overlay of all recorded traces')
+            axR[1].set_ylabel('Average trace\n + sample-wise min/max')
+    
+            #### Dump mean trace into the file for convenience
+            #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
+            saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
+        else:    
+            for ch_no, ch in enumerate(acq_channels):       
+                ytotal[str(ch)] = ytotal[str(ch)]/repeats     
+                #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
+                axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+                axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+                axR[1,ch_no].legend(loc='upper right')
+                axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+                axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+                axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
+                axR[1,ch_no].set_ylabel('Average trace\n + sample-wise min/max')
+    
+                #### Dump mean trace into the file for convenience
+                #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
+                #saved_obj[f'readout_osc_{ch_no}']['mean']['xpar'] = xpar
+                saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
+            figR.tight_layout()
+    
+        if isSaving:
+            figR.savefig(full_filepath[:-7]+".png")
+    except:
+        display (Markdown(f'<span style="color: #f91616;font-weight:bold">WARN: Plotting of acquired data failed. Maybe the measurement len exceeds plotting limit?. </span>'))    
     
     return saved_obj
