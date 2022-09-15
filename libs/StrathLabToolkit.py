@@ -630,9 +630,12 @@ if __name__ == "__main__":
     plt.plot(np.linspace(*xx),xy[str(acq_channels[0])])
 
 def Clear_All_Ch_Variables(globals_in):
+    deletion_list = []
     for jjj in (1,2):
         for var in globals_in:
             if f'ch{jjj}_' in var:
+                deletion_list.append(var)
+        for var in deletion_list:
                 del globals_in[var]
                 
 def Get_Modulation_Variables(globals_in,
