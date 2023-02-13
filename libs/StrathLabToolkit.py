@@ -14,6 +14,8 @@ from matplotlib.patches import Polygon
 from IPython.display import Markdown #for text coloring
 from datetime import datetime
 from tqdm import tqdm
+import traceback
+
 
 try:
     import pyarbtools
@@ -377,6 +379,7 @@ def Acq_OSC_Trace(rth, chan,verbose=False,parametric_x=False):
     # Acquires a single trace from a given channel of the scope.
     # Returned format is either linspace-compatible tuple of three values (parametric_x = True),
     #  or the full vector of t-values (parametric_x = False)
+    
     if chan in (1,2,3,4):
            
         rth.write_str(f'EXP:WAV:SOUR C{chan}W1')       
@@ -402,11 +405,17 @@ def Acq_OSC_Trace(rth, chan,verbose=False,parametric_x=False):
     else:
         raise Warning('Wrong channel selected for readout. Allowed values: 1,2,3,4')
 
-def Acq_OSC_Traces(rth, acq_channels, verbose=False):
+def Acq_OSC_Traces(rth, acq_channels, verbose=False,demux_time=True):
     # UPDATED VERSION of Acq_OSC_Trace, allows for simultaneous multichannel acquisiton
     # Acquires a single trace from a given channel of the scope.
     # parametric_x = is True by default
     
+    # Small fix here: at one point, scope started to return time vector as well. This takes care of it.
+    if demux_time:
+        tshift = 1
+    else:
+        tshift = 0  
+        
     traces = {}
     tvalues = rth.query_str(f'CHAN{acq_channels[0]}:DATA:HEAD?')
     tvalues = [float(s) for s in tvalues.split(',')]
@@ -419,13 +428,13 @@ def Acq_OSC_Traces(rth, acq_channels, verbose=False):
     ch_count = len(acq_channels)
     
     if verbose:
-        if (int(tvalues[2])*ch_count != len(data_bin_ch)):
-            raise Warning(f'OSC readout check: {int(tvalues[2])}*{ch_count} != {len(data_bin_ch)}')
+        if (int(tvalues[2])*(ch_count+tshift) != len(data_bin_ch)):
+            raise Warning(f'OSC readout check: {int(tvalues[2])}*{ch_count+tshift} != {len(data_bin_ch)}')
         else:
-            print(f'OSC readout check: {int(tvalues[2])}*{ch_count} == {len(data_bin_ch)}. OK')
+            print(f'OSC readout check: {int(tvalues[2])}*({ch_count}+{tshift}) == {len(data_bin_ch)}. OK')
     
     for chno, iii in enumerate(acq_channels):
-        traces[str(iii)] = data_bin_ch[chno::ch_count]
+        traces[str(iii)] = data_bin_ch[chno+tshift::ch_count+tshift]
     return (tvalues[0],tvalues[1],int(tvalues[2])), traces                      
 
 #%% awg functions
@@ -624,7 +633,7 @@ def Send_WFs_to_AWG(wf1,
 
 if __name__ == "__main__":
     rth = Initialise_OSC()
-    acq_channels = (3,4)
+    acq_channels = (2,3,4)
     Set_OSC_Channels(rth, acq_channels)
     xx,xy = Acq_OSC_Traces(rth, acq_channels,verbose = True)
     plt.plot(np.linspace(*xx),xy[str(acq_channels[0])])
@@ -815,7 +824,8 @@ def Get_OSC_readouts(acq_channels,
     
         if isSaving:
             figR.savefig(full_filepath[:-7]+".png")
-    except:
+    except Exception as e:
         display (Markdown(f'<span style="color: #f91616;font-weight:bold">WARN: Plotting of acquired data failed. Maybe the measurement len exceeds plotting limit?. </span>'))    
-    
+        print(str(e))
+        traceback.print_exc()
     return saved_obj
