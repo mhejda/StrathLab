@@ -683,7 +683,7 @@ def Get_OSC_readouts(acq_channels,
                      fname,
                      datadir_full,
                      isSaving,
-                     hide_figures = False):
+                     show_figures = False):
     #### Filename synthesis
     now = datetime.now()
     saved_obj['date'] = now.strftime("%Y/%m/%d, %H:%M:%S")
@@ -743,12 +743,12 @@ def Get_OSC_readouts(acq_channels,
             saved_obj[f'readout_osc_{ch_no}']['description'] = osc_channel_info[str(ch)]
         except:
             pass
-    
-    if channelcount == 1:
-        figR,axR = plt.subplots(2,1,figsize=(9,8),gridspec_kw={'height_ratios':(1,1.5)})
-    else:
-        figR,axR = plt.subplots(2,channelcount,figsize=(7+2*channelcount,8),gridspec_kw={'height_ratios':(1,1.5)})
-    resumePlotting = True
+    if show_figures:
+        if channelcount == 1:
+            figR,axR = plt.subplots(2,1,figsize=(9,8),gridspec_kw={'height_ratios':(1,1.5)})
+        else:
+            figR,axR = plt.subplots(2,channelcount,figsize=(7+2*channelcount,8),gridspec_kw={'height_ratios':(1,1.5)})
+        resumePlotting = True
     
     #### Measure
     pbar = tqdm(total=repeats*len(acq_channels))
@@ -758,17 +758,18 @@ def Get_OSC_readouts(acq_channels,
         for ch_no, ch in enumerate(acq_channels):  
             y = np.asarray(y)
             
-            saved_obj[f'readout_osc_{ch_no}'][f'xpar'] = xpar
+            saved_obj[f'readout_osc_{ch_no}']['xpar'] = xpar
             saved_obj[f'readout_osc_{ch_no}'][f'y{jjj}'] = np.asarray(ys[str(ch)])
             
-            if resumePlotting:
-                try:
-                    if channelcount == 1:
-                        axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
-                    else:
-                        axR[0,ch_no].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
-                except:
-                    resumePlotting = False
+            if show_figures:
+                if resumePlotting:
+                    try:
+                        if channelcount == 1:
+                            axR[0].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+                        else:
+                            axR[0,ch_no].plot(np.linspace(*xpar),ys[str(ch)],color='xkcd:black',lw=2,alpha=1/repeats)
+                    except:
+                        resumePlotting = False
      
             ytotal[str(ch)] = ytotal[str(ch)]+ys[str(ch)]
             ymin[str(ch)] = np.minimum(ymin[str(ch)],ys[str(ch)])
@@ -788,7 +789,7 @@ def Get_OSC_readouts(acq_channels,
     #### VISUALIZATION SECTION
     
     #### Create plots: overlay of all measurements, mean+min/max
-    if hide_figures:
+    if show_figures:
         try:           
             #### Render mean, maximum, minimum readouts
             if len(acq_channels) == 1:
