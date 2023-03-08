@@ -682,7 +682,8 @@ def Get_OSC_readouts(acq_channels,
                      sm,
                      fname,
                      datadir_full,
-                     isSaving):
+                     isSaving,
+                     hide_figures = False):
     #### Filename synthesis
     now = datetime.now()
     saved_obj['date'] = now.strftime("%Y/%m/%d, %H:%M:%S")
@@ -787,45 +788,45 @@ def Get_OSC_readouts(acq_channels,
     #### VISUALIZATION SECTION
     
     #### Create plots: overlay of all measurements, mean+min/max
-    try:
-        
-        #### Render mean, maximum, minimum readouts
-        if len(acq_channels) == 1:
-            ytotal[str(ch)] = ytotal[str(ch)]/repeats     
-            #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
-            axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
-            axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-            axR[1].legend(loc='upper right')
-            axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
-            axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
-            axR[0].set_ylabel('Overlay of all recorded traces')
-            axR[1].set_ylabel('Average trace\n + sample-wise min/max')
-    
-            #### Dump mean trace into the file for convenience
-            #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
-            saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
-        else:    
-            for ch_no, ch in enumerate(acq_channels):       
+    if hide_figures:
+        try:           
+            #### Render mean, maximum, minimum readouts
+            if len(acq_channels) == 1:
                 ytotal[str(ch)] = ytotal[str(ch)]/repeats     
                 #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
-                axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
-                axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
-                axR[1,ch_no].legend(loc='upper right')
-                axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
-                axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
-                axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
-                axR[1,ch_no].set_ylabel('Average trace\n + sample-wise min/max')
-    
+                axR[1].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+                axR[1].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+                axR[1].legend(loc='upper right')
+                axR[0].set_facecolor((1.0, 0.47, 0.42,0.2))
+                axR[1].set_facecolor((1.0, 0.47, 0.42,0.2))
+                axR[0].set_ylabel('Overlay of all recorded traces')
+                axR[1].set_ylabel('Average trace\n + sample-wise min/max')
+        
                 #### Dump mean trace into the file for convenience
                 #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
-                #saved_obj[f'readout_osc_{ch_no}']['mean']['xpar'] = xpar
                 saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
-            figR.tight_layout()
-    
-        if isSaving:
-            figR.savefig(full_filepath[:-7]+".png")
-    except Exception as e:
-        display (Markdown(f'<span style="color: #f91616;font-weight:bold">WARN: Plotting of acquired data failed. Maybe the measurement len exceeds plotting limit?. </span>'))    
-        print(str(e))
-        traceback.print_exc()
+            else:    
+                for ch_no, ch in enumerate(acq_channels):       
+                    ytotal[str(ch)] = ytotal[str(ch)]/repeats     
+                    #axR[1].plot(t,,color='xkcd:evergreen',lw=0.5,alpha=0.5,label='Min')
+                    axR[1,ch_no].fill_between(np.linspace(*t),ymin[str(ch)],ymax[str(ch)],color='xkcd:ocean blue',alpha=0.5,label='Min-Max')
+                    axR[1,ch_no].plot(np.linspace(*t),ytotal[str(ch)],color='xkcd:black',lw=1,label='Mean trace')
+                    axR[1,ch_no].legend(loc='upper right')
+                    axR[0,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+                    axR[1,ch_no].set_facecolor((1.0, 0.47, 0.42,0.2))
+                    axR[0,ch_no].set_ylabel('Overlay of all recorded traces')
+                    axR[1,ch_no].set_ylabel('Average trace\n + sample-wise min/max')
+        
+                    #### Dump mean trace into the file for convenience
+                    #saved_obj[f'readout_osc_{ch_no}']['mean'] = {}
+                    #saved_obj[f'readout_osc_{ch_no}']['mean']['xpar'] = xpar
+                    saved_obj[f'readout_osc_{ch_no}']['ymean'] = ytotal[str(ch)]
+                figR.tight_layout()
+        
+            if isSaving:
+                figR.savefig(full_filepath[:-7]+".png")
+        except Exception as e:
+            display (Markdown(f'<span style="color: #f91616;font-weight:bold">WARN: Plotting of acquired data failed. Maybe the measurement len exceeds plotting limit?. </span>'))    
+            print(str(e))
+            traceback.print_exc()
     return saved_obj
