@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Library of utility functions for measurements in Antonio Hurtados lab at IoP, Strathclyde
 v1.1
@@ -314,7 +314,6 @@ def Keithley_GetReadout(sm):
 #%% oscilloscope functions
 
 ##### ROHDE SCHWARZ OSCILLOSCOPE
-### TODO: change name to init/initialise
 def Initialise_OSC(address='USB0::0x0AAD::0x0197::1320.5007k08-100963::INSTR'):
     # Creates oscilloscope instance
     from RsInstrument.RsInstrument import RsInstrument
@@ -683,7 +682,7 @@ def Get_OSC_readouts(acq_channels,
                      fname,
                      datadir_full,
                      isSaving,
-                     show_figures = False):
+                     show_figures = True):
     #### Filename synthesis
     now = datetime.now()
     saved_obj['date'] = now.strftime("%Y/%m/%d, %H:%M:%S")
