@@ -18,5 +18,3 @@ mkdocs:
 python:
    install:
    - requirements: docs/requirements.txt
-   
-Jinja2==3.0.3
