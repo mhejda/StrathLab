@@ -1,1 +1,5 @@
 site_name: StrathLab documentation
+
+nav:
+    - Home: index.md
+    - About: about.md
