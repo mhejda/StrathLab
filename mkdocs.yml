@@ -4,6 +4,7 @@ nav:
     - Home: index.md
     - About: about.md
     - Markdown: md.md
+    - Templates: templates.md
 
 theme: 
     name: readthedocs

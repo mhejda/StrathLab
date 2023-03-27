@@ -1,6 +1,6 @@
 # Welcome to StrathLab
 
-Documentation for https://github.com/mhejda/StrathLab
+Documentation for [the StrathLab python toolkit](https://github.com/mhejda/StrathLab)
 
 Scripts used to control lab equipment.
 
@@ -17,3 +17,4 @@ Scripts used to control lab equipment.
     docs/
         index.md  # The documentation homepage.
         ...       # Other markdown pages, images and other files.
+

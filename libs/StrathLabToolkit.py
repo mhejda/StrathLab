@@ -22,6 +22,8 @@ try:
 except:
     pass
 
+import UtilityFuncs
+
 '''
 try:
     import pyvisa as visa
