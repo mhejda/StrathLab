@@ -1,6 +1,8 @@
 # Welcome to StrathLab
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+Documentation for https://github.com/mhejda/StrathLab
+
+Scripts used to control lab equipment.
 
 ## Commands
 

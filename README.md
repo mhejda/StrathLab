@@ -1,6 +1,8 @@
 # StrathLab
 Strathclyde Neuromorphic Photonics Lab Control: scripts and notebooks.
 
+Full documentation at https://strathlab.readthedocs.io/en/latest/
+
 # Jupyter Notebook template for data acquisition
 
 **Main idea:** Directly control most of our lab instruments, perform measurements in a streamlined way. 

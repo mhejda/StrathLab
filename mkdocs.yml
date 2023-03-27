@@ -3,3 +3,7 @@ site_name: StrathLab documentation
 nav:
     - Home: index.md
     - About: about.md
+    - Markdown: md.md
+
+theme: 
+    name: readthedocs
